@@ -6,7 +6,9 @@ set SSH_AGENT_SEARCHING=1
 
 rem -- *** SET THIS PATH TO THE LOCATION WHERE YOUR SSH BINARIES ARE
 if not defined SSH_BIN_PATH (
-    echo Searching for SSH bin path... Define SSH_BIN_PATH to override. 1>&2
+    if not defined SSH_AGENT_CMD_QUIET (
+        echo Searching for SSH bin path... Define SSH_BIN_PATH to override. 1>&2
+    )
 
     if exist "c:\program files\git\usr\bin\" (
         set SSH_BIN_PATH="c:\program files\git\usr\bin\"
@@ -16,7 +18,11 @@ if not defined SSH_BIN_PATH (
 
     if defined SSH_BIN_PATH (
         setlocal enabledelayedexpansion
-        echo Found !SSH_BIN_PATH!... 1>&2
+
+        if not defined SSH_AGENT_CMD_QUIET (
+            echo Found !SSH_BIN_PATH!... 1>&2
+        )
+
         endlocal
     )
 )
@@ -27,11 +33,18 @@ rem -- script again without rebooting.
 set SSH_AUTH_SOCK=%TEMP%\ssh-agent-socket.tmp
 
 :checkAgent
-echo Looking for existing ssh-agent... 1>&2
+if not defined SSH_AGENT_CMD_QUIET (
+    echo Looking for existing ssh-agent... 1>&2
+)
+
 SET "SSH_AGENT_PID="
 rem -- Call cmd /c to find it, because Take Command's "tasklist" is NOT format compatible with CMD.exe!!
 FOR /F "tokens=1-2" %%A IN ('cmd /c tasklist^|find /i "ssh-agent.exe"') DO @(IF %%A==ssh-agent.exe (call :agentexists %%B))
-echo Finished looking... 1>&2
+
+if not defined SSH_AGENT_CMD_QUIET (
+    echo Finished looking... 1>&2
+)
+
 IF NOT DEFINED SSH_AGENT_PID (GOTO :startagent)
 CALL :setregistry
 set SSH_AGENT_SEARCHING=
@@ -42,17 +55,25 @@ GOTO :eof
  EXIT /b
 
 :wtf
- @echo "WTF" 1>&2
+ if not defined SSH_AGENT_CMD_QUIET (
+     @echo "WTF" 1>&2
+ )
+
  set SSH_AGENT_SEARCHING=
  GOTO :eof
 
 :agentexists
- ECHO Agent exists as process %1 1>&2
+ if not defined SSH_AGENT_CMD_QUIET (
+     ECHO Agent exists as process %1 1>&2
+ )
+
  SET SSH_AGENT_PID=%1
  EXIT /b
 
 :startagent
- ECHO Starting agent 1>&2
+ if not defined SSH_AGENT_CMD_QUIET (
+    ECHO Starting agent 1>&2
+ )
  rem -- win 8.1 at least has these set as system, so you can't delete them
  attrib -s %SSH_AUTH_SOCK%
  del /f /q %SSH_AUTH_SOCK%
@@ -68,8 +89,8 @@ GOTO :eof
  rem -- should allow non-CMD command parsers such as bash, Take Command, PowerShell, etc
  rem -- or if you're not using the autorun registry change, to pick up the environment.
  rem -- Note that SetX does not affect any already open command shells.
- SetX SSH_AUTH_SOCK %SSH_AUTH_SOCK%
- SetX SSH_AGENT_PID %SSH_AGENT_PID%
+ SetX SSH_AUTH_SOCK %SSH_AUTH_SOCK% 1>NUL
+ SetX SSH_AGENT_PID %SSH_AGENT_PID% 1>NUL
  EXIT /b
 
 :eof
